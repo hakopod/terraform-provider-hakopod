@@ -142,6 +142,7 @@ Exactly one of `config` or `spec` must be set.
 - `name` (String) Application name, from the configuration.
 - `pending_changes` (Number) Number of changes the server reported between the deployed application and the configuration in the last planned deployment.
 - `revision` (Number) Current application revision.
+- `service_hostnames` (Map of String) Private DNS name of each service, keyed by service name. Another application that joins a shared virtual network segment and is allowed by the service's `network_access` reaches it at this name. Known after the application is first created.
 - `status` (String) Application status reported by the server, for example `healthy`, `recovered`, `failed` or `empty`.
 
 ## Import

@@ -1,0 +1,15 @@
+schema_version = 1
+name = "web"
+
+[networks.edge]
+
+[networks.backend]
+internal = true
+virtual_network = "shop"
+segment = "backend"
+
+[services.web]
+image = "nginxinc/nginx-unprivileged:1.27-alpine"
+port = 8080
+public = true
+networks = ["edge", "backend"]

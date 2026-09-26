@@ -1,0 +1,15 @@
+schema_version = 1
+name = "api"
+
+[networks.backend]
+internal = true
+virtual_network = "shop"
+segment = "backend"
+
+[services.api]
+image = "nginxinc/nginx-unprivileged:1.27-alpine"
+port = 8080
+networks = ["backend"]
+
+[services.api.network_access]
+from_applications = ["web/web", "worker/worker"]

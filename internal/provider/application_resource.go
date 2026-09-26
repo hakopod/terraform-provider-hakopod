@@ -3,10 +3,12 @@ package provider
 import (
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"regexp"
 	"strings"
 	"time"
@@ -52,6 +54,7 @@ type applicationModel struct {
 	Status              types.String `tfsdk:"status"`
 	DeploymentID        types.String `tfsdk:"deployment_id"`
 	PendingChanges      types.Int64  `tfsdk:"pending_changes"`
+	ServiceHostnames    types.Map    `tfsdk:"service_hostnames"`
 }
 
 func (r *applicationResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -79,6 +82,7 @@ func (r *applicationResource) Schema(_ context.Context, _ resource.SchemaRequest
 			"status":                 schema.StringAttribute{Computed: true, Description: "Application status (healthy, recovered, failed, empty, ...)."},
 			"deployment_id":          schema.StringAttribute{Computed: true, Description: "ID of the last deployment this resource made."},
 			"pending_changes":        schema.Int64Attribute{Computed: true, Description: "Number of server-reported changes the last planned deployment carried."},
+			"service_hostnames":      schema.MapAttribute{Computed: true, ElementType: types.StringType, Description: "Private DNS name of each service, keyed by service name. Another application that joins a shared virtual network segment and is allowed by the service's network_access reaches it at this name. Known after the application is first created."},
 		},
 	}
 }
@@ -155,9 +159,11 @@ func (r *applicationResource) ModifyPlan(ctx context.Context, req resource.Modif
 	}
 	unknown := func() {
 		plan.Revision, plan.Status, plan.DeploymentID = types.Int64Unknown(), types.StringUnknown(), types.StringUnknown()
+		plan.ServiceHostnames = types.MapUnknown(types.StringType)
 	}
 	keep := func() {
 		plan.Name, plan.Revision, plan.Status, plan.DeploymentID, plan.PendingChanges = state.Name, state.Revision, state.Status, state.DeploymentID, state.PendingChanges
+		plan.ServiceHostnames = state.ServiceHostnames
 	}
 
 	if !plan.EnvFiles.IsNull() {
@@ -212,6 +218,10 @@ func (r *applicationResource) ModifyPlan(ctx context.Context, req resource.Modif
 		keep()
 	}
 	plan.Name = types.StringValue(name)
+	if hasState && !state.ID.IsNull() {
+		// The ID is fixed for an existing application, so its service names are known now.
+		plan.ServiceHostnames = serviceHostnames(state.ID.ValueString(), p.Spec)
+	}
 	if hasState && state.Name.ValueString() != name {
 		resp.RequiresReplace = append(resp.RequiresReplace, path.Root("name"))
 	}
@@ -305,6 +315,7 @@ func (r *applicationResource) apply(ctx context.Context, m *applicationModel, ex
 		}
 		if !needsDeploy(len(p.Changes), app.Status) {
 			m.Revision, m.Status = types.Int64Value(app.Revision), types.StringValue(app.Status)
+			m.ServiceHostnames = serviceHostnames(existingID, p.Spec)
 			save()
 			return
 		}
@@ -320,6 +331,7 @@ func (r *applicationResource) apply(ctx context.Context, m *applicationModel, ex
 		return
 	}
 	m.ID, m.DeploymentID, m.Revision, m.Status = types.StringValue(dep.ApplicationID), types.StringValue(dep.ID), types.Int64Value(dep.Revision), types.StringValue(dep.Status)
+	m.ServiceHostnames = serviceHostnames(dep.ApplicationID, p.Spec)
 	var waitErr error
 	if m.Wait.ValueBool() {
 		waitErr = r.wait(ctx, dep.ID, m.WaitTimeout.ValueString())
@@ -379,6 +391,7 @@ func (r *applicationResource) Read(ctx context.Context, req resource.ReadRequest
 		return
 	}
 	m.Name, m.Revision, m.Status = types.StringValue(app.Name), types.Int64Value(app.Revision), types.StringValue(app.Status)
+	m.ServiceHostnames = serviceHostnames(app.ID, app.Spec)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &m)...)
 }
 
@@ -446,6 +459,24 @@ func servicesEmpty(spec json.RawMessage) bool {
 	return json.Unmarshal(spec, &doc) == nil && doc.Services != nil && len(doc.Services) == 0
 }
 
+// serviceHostnames mirrors the server: each application runs in namespace
+// "hp-" + hex(sha256(application ID)[:16]) (internal/cluster/types.go Namespace), and the
+// network inspector reports "<service>.<namespace>.svc.cluster.local"
+// (internal/api/virtual_networks.go).
+func serviceHostnames(applicationID string, spec json.RawMessage) types.Map {
+	var doc struct {
+		Services map[string]json.RawMessage `json:"services"`
+	}
+	_ = json.Unmarshal(spec, &doc)
+	sum := sha256.Sum256([]byte(applicationID))
+	namespace := "hp-" + hex.EncodeToString(sum[:16])
+	names := map[string]attr.Value{}
+	for service := range doc.Services {
+		names[service] = types.StringValue(service + "." + namespace + ".svc.cluster.local")
+	}
+	return types.MapValueMust(types.StringType, names)
+}
+
 func specName(spec json.RawMessage) string {
 	var doc struct {
 		Name string `json:"name"`
@@ -485,7 +516,7 @@ func (r *applicationResource) ImportState(ctx context.Context, req resource.Impo
 	}
 	m := applicationModel{
 		Project: types.StringValue(app.Project), Environment: types.StringValue(app.Environment),
-		Config: types.StringNull(), Spec: jsonValue{StringValue: types.StringNull()}, EnvFiles: types.MapNull(types.StringType),
+		Config: types.StringNull(), Spec: jsonValue{StringValue: types.StringNull()}, EnvFiles: types.MapNull(types.StringType), ServiceHostnames: types.MapNull(types.StringType),
 		Wait: types.BoolValue(true), WaitTimeout: types.StringValue("20m"), DeleteDataOnDestroy: types.BoolValue(false),
 		ID: types.StringValue(app.ID), Name: types.StringValue(app.Name), Revision: types.Int64Value(app.Revision),
 		Status: types.StringValue(app.Status), DeploymentID: types.StringNull(), PendingChanges: types.Int64Value(0),

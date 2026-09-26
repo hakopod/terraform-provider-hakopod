@@ -1,0 +1,15 @@
+schema_version = 1
+name = "fullstack"
+description = "Private traffic between the web, API, worker, scheduler, database and cache applications"
+
+# web -> api
+[segments.frontend]
+applications = ["web", "api"]
+
+# api, worker, scheduler -> db
+[segments.data]
+applications = ["api", "worker", "scheduler", "db"]
+
+# api, worker -> cache
+[segments.cache]
+applications = ["api", "worker", "cache"]

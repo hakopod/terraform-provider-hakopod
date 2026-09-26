@@ -1,0 +1,26 @@
+schema_version = 1
+name = "web"
+
+# "edge" is local and not internal: it gives the service external egress.
+[networks.edge]
+
+[networks.frontend]
+internal = true
+virtual_network = "${network}"
+segment = "frontend"
+
+[services.web]
+image = "${image}"
+port = 8080
+public = true
+healthcheck = "/"
+replicas = 2
+size = "small"
+# nginx-unprivileged runs as the nginx user and listens on 8080.
+run_as_user = 101
+run_as_group = 101
+networks = ["edge", "frontend"]
+
+[services.web.env]
+# Where a real frontend would proxy /api to.
+API_URL = "${api_url}"

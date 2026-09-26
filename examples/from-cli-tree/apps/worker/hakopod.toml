@@ -1,0 +1,12 @@
+schema_version = 1
+name = "worker"
+
+[networks.backend]
+internal = true
+virtual_network = "shop"
+segment = "backend"
+
+[services.worker]
+image = "busybox:1.37"
+command = ["sh", "-c", "while true; do echo working; sleep 60; done"]
+networks = ["backend"]

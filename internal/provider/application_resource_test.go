@@ -2,10 +2,13 @@ package provider
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -201,5 +204,18 @@ func TestApplicationCreateExistingApp(t *testing.T) {
 				t.Fatalf("expected import guidance and no writes, got deployed=%d saved=%v %v", deployed, saved, diags)
 			}
 		})
+	}
+}
+
+func TestServiceHostnamesMatchServerNamespace(t *testing.T) {
+	// Namespace("0123…") in the server is "hp-" + hex(sha256(id)[:16]).
+	got := serviceHostnames(appID, json.RawMessage(`{"services":{"api":{},"db":{}}}`))
+	sum := sha256.Sum256([]byte(appID))
+	ns := "hp-" + hex.EncodeToString(sum[:16])
+	want := map[string]string{"api": "api." + ns + ".svc.cluster.local", "db": "db." + ns + ".svc.cluster.local"}
+	var m map[string]string
+	got.ElementsAs(context.Background(), &m, false)
+	if !reflect.DeepEqual(m, want) {
+		t.Fatalf("got %v want %v", m, want)
 	}
 }

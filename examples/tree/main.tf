@@ -37,6 +37,10 @@ resource "hakopod_virtual_network" "commerce" {
 resource "hakopod_application" "database" {
   project     = hakopod_project.commerce.name
   environment = hakopod_project.commerce.environments[0]
+  # A destroyed application leaves a retained-data record even with no volume,
+  # and a project holding retained data cannot be deleted. True so that
+  # `terraform destroy` finishes; use false where data must survive.
+  delete_data_on_destroy = true
   spec = jsonencode({
     schema_version = 1
     name           = "database"
@@ -74,12 +78,17 @@ resource "hakopod_application" "database" {
 resource "hakopod_application" "catalog" {
   project     = hakopod_project.commerce.name
   environment = hakopod_project.commerce.environments[0]
+  # A destroyed application leaves a retained-data record even with no volume,
+  # and a project holding retained data cannot be deleted. True so that
+  # `terraform destroy` finishes; use false where data must survive.
+  delete_data_on_destroy = true
   config = templatefile("${path.module}/catalog/hakopod.toml.tftpl", {
     network = hakopod_virtual_network.commerce.name
   })
 
+  # The key is the filename the TOML uses; the value is its contents.
   env_files = {
-    ".env" = file("${path.module}/catalog/.env")
+    ".env" = file("${path.module}/catalog/catalog.env")
   }
 }
 

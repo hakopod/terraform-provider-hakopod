@@ -37,7 +37,18 @@ resource "hakopod_application" "catalog" {
 }
 ```
 
-References order everything: project, then network, then applications; destroy runs in reverse. No `depends_on` is needed. A complete example with a project, a network and two applications (one in HCL, one in TOML) is in [examples/tree](examples/tree).
+References order everything: project, then network, then applications; destroy runs in reverse. No `depends_on` is needed.
+
+## Examples
+
+| Example | What it shows |
+| --- | --- |
+| [tree](examples/tree) | A project, a network and two applications — one in HCL, one in TOML. |
+| [static-site](examples/static-site) | The smallest useful configuration: one public application, no network. |
+| [full-stack](examples/full-stack) | web, api, worker, scheduler, PostgreSQL and Redis on one network with three segments, generated secrets and persistent volumes. |
+| [microservices](examples/microservices) | Five services generated from one map, with ingress derived from who calls whom. |
+| [multi-environment](examples/multi-environment) | One module instantiated per environment, sized differently in each. |
+| [from-cli-tree](examples/from-cli-tree) | A directory tree of `hakopod.toml` files deployed as-is, matching `hk deploy --dir`. |
 
 ## Building locally
 

@@ -1,0 +1,36 @@
+# Settings from the Hakopod Redis blueprint (non-root UID 999, AOF on a
+# volume, password from a secret), joined to the "cache" segment only.
+schema_version = 1
+name = "cache"
+
+[networks.cache]
+internal = true
+virtual_network = "${network}"
+segment = "cache"
+
+[services.redis]
+image = "${image}"
+port = 6379
+size = "small"
+run_as_user = 999
+run_as_group = 0
+fs_group = 0
+command = ["sh", "-ec"]
+args = ['exec redis-server --appendonly yes --maxmemory 64mb --maxmemory-policy noeviction --requirepass "$REDIS_PASSWORD"']
+networks = ["cache"]
+
+[services.redis.volume]
+mount_path = "/data"
+size_gib = 1
+
+[services.redis.env]
+# Changes when the password is rotated, so the service restarts and redis
+# picks up the new --requirepass.
+SECRET_VERSION = "${secret_version}"
+
+[services.redis.secrets]
+REDIS_PASSWORD = { ref = "${password_secret}" }
+
+[services.redis.network_access]
+from = []
+from_applications = ["api/api", "worker/worker"]

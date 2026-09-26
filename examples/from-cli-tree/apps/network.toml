@@ -1,0 +1,6 @@
+schema_version = 1
+name = "shop"
+description = "Private traffic between the shop applications"
+
+[segments.backend]
+applications = ["web", "api", "worker"]
