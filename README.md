@@ -9,6 +9,7 @@ Resources follow Hakopod's model, project → applications → services, with vi
 - `hakopod_project` — a project and its environments. Environments can be added, not removed. A destroyed project's name cannot be reused.
 - `hakopod_application` — an application and all its services, from TOML (`config`) or JSON (`spec`). Create and update deploy it as one revision. Services are not separate resources.
 - `hakopod_virtual_network` — a virtual network and its segment grants. Needs a project administrator.
+- `hakopod_secret` — a project, environment or application secret, either a literal value or one the server generates. Values are write-only; `value_version` changes on rotation, so an application that reads the secret can redeploy.
 
 Full documentation is on the [Terraform Registry](https://registry.terraform.io/providers/hakopod/hakopod/latest/docs), and in [docs/](docs/index.md) in this repository.
 
