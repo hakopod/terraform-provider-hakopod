@@ -1,0 +1,10 @@
+/terraform-provider-hakopod
+/dist/
+*.exe
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+crash.log
+.env
+.DS_Store

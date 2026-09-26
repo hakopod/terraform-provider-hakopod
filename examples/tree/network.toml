@@ -1,0 +1,6 @@
+schema_version = 1
+name = "commerce"
+description = "Private catalog and data services"
+
+[segments.data]
+applications = ["catalog", "database"]

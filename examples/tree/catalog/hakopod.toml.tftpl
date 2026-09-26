@@ -1,0 +1,16 @@
+schema_version = 1
+name = "catalog"
+
+[networks.edge]
+
+[networks.data]
+internal = true
+virtual_network = "${network}"
+segment = "data"
+
+[services.api]
+image = "ghcr.io/your-team/catalog-api:1.0"
+port = 8080
+public = true
+networks = ["edge", "data"]
+env_file = ".env"
