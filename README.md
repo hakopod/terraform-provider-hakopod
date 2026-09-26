@@ -10,7 +10,35 @@ Resources follow Hakopod's model, project → applications → services, with vi
 - `hakopod_application` — an application and all its services, from TOML (`config`) or JSON (`spec`). Create and update deploy it as one revision. Services are not separate resources.
 - `hakopod_virtual_network` — a virtual network and its segment grants. Needs a project administrator.
 
-Full documentation is in [docs/](docs/index.md).
+Full documentation is on the [Terraform Registry](https://registry.terraform.io/providers/hakopod/hakopod/latest/docs), and in [docs/](docs/index.md) in this repository.
+
+## Install
+
+The provider is published on the [Terraform Registry](https://registry.terraform.io/providers/hakopod/hakopod/latest) as `hakopod/hakopod`. Pin it in your configuration:
+
+```terraform
+terraform {
+  required_providers {
+    hakopod = {
+      source  = "hakopod/hakopod"
+      version = "~> 0.1"
+    }
+  }
+}
+```
+
+Then download it:
+
+```sh
+terraform init
+```
+
+The provider reads two environment variables, the same ones the Hakopod CLI uses, so a shell configured for the CLI needs no `provider` block:
+
+- `HAKOPOD_API_URL` — the Hakopod API URL, or the provider's `url` attribute.
+- `HAKOPOD_API_KEY` — a Hakopod API key, or the provider's `api_key` attribute.
+
+Hakopod Cloud also reads `HAKOPOD_WORKSPACE` (or `workspace`); leave it unset for self-hosted installations.
 
 ## Example
 
@@ -50,7 +78,9 @@ References order everything: project, then network, then applications; destroy r
 | [multi-environment](examples/multi-environment) | One module instantiated per environment, sized differently in each. |
 | [from-cli-tree](examples/from-cli-tree) | A directory tree of `hakopod.toml` files deployed as-is, matching `hk deploy --dir`. |
 
-## Building locally
+## Developing the provider
+
+Use the registry release above to *use* the provider. This section is for working on the provider's own source, where Terraform has to run a locally built binary instead of a published one.
 
 Requires Go (version in `go.mod`) and Terraform 1.x.
 

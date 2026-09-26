@@ -17,7 +17,8 @@ Configuration is the same application and network TOML that the Hakopod CLI and 
 terraform {
   required_providers {
     hakopod = {
-      source = "hakopod/hakopod"
+      source  = "hakopod/hakopod"
+      version = "~> 0.1"
     }
   }
 }
