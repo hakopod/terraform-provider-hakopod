@@ -77,7 +77,7 @@ References order everything: project, then network, then applications; destroy r
 | [full-stack](examples/full-stack) | web, api, worker, scheduler, PostgreSQL and Redis on one network with three segments, generated secrets and persistent volumes. |
 | [microservices](examples/microservices) | Five services generated from one map, with ingress derived from who calls whom. |
 | [multi-environment](examples/multi-environment) | One module instantiated per environment, sized differently in each. |
-| [from-cli-tree](examples/from-cli-tree) | A directory tree of `hakopod.toml` files deployed as-is, matching `hk deploy --dir`. |
+| [from-cli-tree](examples/from-cli-tree) | A directory tree of `hakopod.toml` files deployed as-is, matching `hakopod deploy --dir`. |
 
 ## Developing the provider
 
