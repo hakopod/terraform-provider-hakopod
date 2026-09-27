@@ -112,14 +112,18 @@ go test ./...
 
 Releases are built by GoReleaser from `.github/workflows/release.yml` when a `v*` tag is pushed. The Terraform Registry requires the checksum file to be signed.
 
-1. Create a GPG key (RSA or DSA; the Registry does not accept ECC keys) and add its public key to the Registry namespace under **User Settings → Signing Keys**.
-2. Add repository secrets `GPG_PRIVATE_KEY` (ASCII-armored private key) and `PASSPHRASE`.
-3. Tag and push:
+The signing key and the repository secrets are already in place; publishing a new version is only the tag:
 
-   ```sh
-   git tag v0.1.0
-   git push origin v0.1.0
-   ```
+```sh
+git tag v0.2.0
+git push origin v0.2.0
+```
+
+To set this up again from scratch, or to rotate the key:
+
+1. Create a GPG key (RSA or DSA; the Registry does not accept ECC keys) and add its public key to the Registry namespace under **Public namespaces → hakopod → Settings → GPG Keys**.
+2. Add repository secrets `GPG_PRIVATE_KEY` (ASCII-armored private key) and `PASSPHRASE`.
+3. Tag and push as above.
 
 The workflow publishes zip archives for each OS/architecture, a `SHA256SUMS` file, its signature and the registry manifest to a GitHub release, which the Registry picks up.
 
