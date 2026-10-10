@@ -101,6 +101,8 @@ With `file()` and the network name written into the TOML there is no reference, 
 
 During plan the provider asks the server to review the configuration and reports the number of changes in `pending_changes`. Changes made outside Terraform, for example in the dashboard, count as changes there and are reverted by the next apply. Drift is not detected while `env_files` is set: the provider does not contact the server at plan time then, because review imports the env files into secrets. Change the configuration or the env files to deploy again.
 
+Some older servers omit service suspension changes from their review. For matching service sets, the provider also compares requested suspension with the current application. A difference requires deployment and produces a warning, even when `pending_changes` is zero. With `wait = true`, the provider checks suspension again after deployment. This safeguard does not change the `env_files` limitation above.
+
 When `env_files` is set, plan does not contact the server, because reviewing the configuration would import the env files into secrets. `pending_changes` is then unknown until apply.
 
 ### Apply
