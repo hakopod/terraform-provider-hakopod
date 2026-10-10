@@ -14,9 +14,39 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
       - run: go build ./...
       - run: go vet ./...
-      - run: go test ./...
+      - run: go test -race ./...
+      - name: Build Linux validation binary
+        env:
+          CGO_ENABLED: "0"
+          GOOS: linux
+          GOARCH: amd64
+        run: |
+          mkdir -p validation-artifact
+          go build -trimpath -o validation-artifact/terraform-provider-hakopod .
+          python3 - <<'PY'
+          import hashlib, json, pathlib, subprocess
+          binary = pathlib.Path("validation-artifact/terraform-provider-hakopod")
+          receipt = {
+              "schema_version": 1,
+              "source_commit": subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip(),
+              "source_tree": subprocess.check_output(["git", "rev-parse", "HEAD^{tree}"], text=True).strip(),
+              "binary": binary.name,
+              "sha256": hashlib.sha256(binary.read_bytes()).hexdigest(),
+              "goos": "linux", "goarch": "amd64", "cgo_enabled": False,
+              "checks": ["go build ./...", "go vet ./...", "go test -race ./..."],
+          }
+          binary.with_name("receipt.json").write_text(json.dumps(receipt, indent=2) + "\n")
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: provider-linux-amd64-validation
+          path: validation-artifact/
+          retention-days: 7
+          if-no-files-found: error

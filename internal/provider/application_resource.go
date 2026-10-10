@@ -210,8 +210,24 @@ func (r *applicationResource) ModifyPlan(ctx context.Context, req resource.Modif
 	for _, w := range p.Warnings {
 		resp.Diagnostics.AddWarning("Hakopod plan warning", w)
 	}
+	suspensionChanged := false
+	if hasState && len(p.Changes) == 0 && !state.ID.IsNull() && !state.ID.IsUnknown() {
+		app, err := r.client.GetApplication(ctx, state.ID.ValueString())
+		if err != nil {
+			resp.Diagnostics.AddError("Reading application failed", err.Error())
+			return
+		}
+		suspensionChanged, err = suspensionDrift(p.Spec, app.Spec)
+		if err != nil {
+			resp.Diagnostics.AddError("Checking application suspension failed", err.Error())
+			return
+		}
+		if suspensionChanged {
+			resp.Diagnostics.AddWarning("Server omitted a suspension change", "The requested service suspension differs from the current application. Apply will deploy the requested suspension. pending_changes remains the server-reported count.")
+		}
+	}
 	name := specName(p.Spec)
-	if !hasState || needsDeploy(len(p.Changes), state.Status.ValueString()) {
+	if !hasState || suspensionChanged || needsDeploy(len(p.Changes), state.Status.ValueString()) {
 		unknown()
 		plan.PendingChanges = types.Int64Value(int64(len(p.Changes)))
 	} else {
@@ -313,7 +329,15 @@ func (r *applicationResource) apply(ctx context.Context, m *applicationModel, ex
 			diags.AddError("Reading application failed", err.Error())
 			return
 		}
+		suspensionChanged := false
 		if !needsDeploy(len(p.Changes), app.Status) {
+			suspensionChanged, err = suspensionDrift(p.Spec, app.Spec)
+			if err != nil {
+				diags.AddError("Checking application suspension failed", err.Error())
+				return
+			}
+		}
+		if !suspensionChanged && !needsDeploy(len(p.Changes), app.Status) {
 			m.Revision, m.Status = types.Int64Value(app.Revision), types.StringValue(app.Status)
 			m.ServiceHostnames = serviceHostnames(existingID, p.Spec)
 			save()
@@ -338,6 +362,14 @@ func (r *applicationResource) apply(ctx context.Context, m *applicationModel, ex
 	}
 	if app, err := r.client.GetApplication(ctx, dep.ApplicationID); err == nil {
 		m.Revision, m.Status = types.Int64Value(app.Revision), types.StringValue(app.Status)
+		if m.Wait.ValueBool() && waitErr == nil {
+			changed, err := suspensionDrift(p.Spec, app.Spec)
+			if err != nil {
+				diags.AddError("Checking application suspension failed", err.Error())
+			} else if changed {
+				diags.AddError("Application suspension did not match", "The deployment finished, but the current service suspension differs from the requested suspension. Inspect the application before applying again.")
+			}
+		}
 	} else if waitErr == nil && creating {
 		// The deployment succeeded; an error here would taint the resource and the next
 		// apply would delete it, retiring its name. Keep the deployment's values instead.
