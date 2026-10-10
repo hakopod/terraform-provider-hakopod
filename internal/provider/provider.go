@@ -114,6 +114,7 @@ func (p *hakopodProvider) Resources(context.Context) []func() resource.Resource 
 		NewVirtualNetworkResource,
 		NewProjectResource,
 		NewSecretResource,
+		NewClickHouseAccessProfileResource,
 	}
 }
 
