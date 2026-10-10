@@ -10,6 +10,7 @@ Resources follow Hakopod's model, project → applications → services, with vi
 - `hakopod_application` — an application and all its services, from TOML (`config`) or JSON (`spec`). Create and update deploy it as one revision. Services are not separate resources.
 - `hakopod_virtual_network` — a virtual network and its segment grants. Needs a project administrator.
 - `hakopod_secret` — a project, environment or application secret, either a literal value or one the server generates. Values are write-only; `value_version` changes on rotation, so an application that reads the secret can redeploy.
+- [`hakopod_clickhouse_access_profile`](docs/resources/clickhouse_access_profile.md) — enable tenant administration on an existing standalone ClickHouse database. Removing this resource preserves its privileges.
 
 Full documentation is on the [Terraform Registry](https://registry.terraform.io/providers/hakopod/hakopod/latest/docs), and in [docs/](docs/index.md) in this repository.
 
