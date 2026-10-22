@@ -219,3 +219,23 @@ func TestServiceHostnamesMatchServerNamespace(t *testing.T) {
 		t.Fatalf("got %v want %v", m, want)
 	}
 }
+
+// Node profiles (Hakopod 0.1.0-alpha.63) and sidecars (0.1.0-alpha.64) are part
+// of the application specification. The provider must send them to the server
+// unchanged; the server validates them and checks the operator's grant.
+func TestApplicationSendsNodeProfileAndSidecarsVerbatim(t *testing.T) {
+	spec := `{"schema_version":1,"name":"kelvo","services":{"node":{"image":"ghcr.io/synehq/kelvo-go-node@sha256:` + strings.Repeat("a", 64) + `","node_profile":"kelvo-node","node_name":"hakopod-server","replicas":1,"update_strategy":"recreate","sidecars":[{"name":"tailscale","image":"ghcr.io/tailscale/tailscale@sha256:` + strings.Repeat("b", 64) + `","cpu":"100m","memory":"128Mi","env":{"TS_USERSPACE":"false"},"secrets":{"TS_AUTHKEY":{"ref":"tailscale-auth"}}}]}}}`
+	f := &fakeHakopod{status: "failed"}
+	r := f.server(t)
+	m := appModel()
+	m.Config = types.StringNull()
+	m.Spec = jsonValue{StringValue: types.StringValue(spec)}
+	var diags diag.Diagnostics
+	r.apply(context.Background(), &m, appID, &diags, func() {})
+	if diags.HasError() || len(f.deploys) != 1 {
+		t.Fatalf("diags %v deploys %d", diags, len(f.deploys))
+	}
+	if !jsonEqual(string(f.deploys[0]), spec) {
+		t.Fatalf("deployed spec changed:\n%s\nwant\n%s", f.deploys[0], spec)
+	}
+}

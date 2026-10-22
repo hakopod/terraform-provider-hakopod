@@ -95,6 +95,45 @@ resource "hakopod_application" "catalog" {
 
 With `file()` and the network name written into the TOML there is no reference, and Terraform may deploy the application before the network exists.
 
+### Node profiles and sidecars
+
+`node_profile` (Hakopod 0.1.0-alpha.63 or later) and `sidecars` (0.1.0-alpha.64 or later) are fields of a service in the application specification, so `config` and `spec` carry them like any other field. The provider sends them unchanged, and the server validates them during the plan.
+
+A node profile is an installation-owned grant. The administrator approves it in the server's node-profiles file (`HAKOPOD_NODE_PROFILES_FILE`), not in Terraform. A plan that names a profile the server has not approved for that exact project, environment, application, service and node fails with the server's message. Sidecar privileges such as `NET_ADMIN`, `/dev/net/tun` or root come only from the same grant.
+
+```terraform
+resource "hakopod_application" "kelvo" {
+  project     = hakopod_project.data.name
+  environment = "production"
+  spec = jsonencode({
+    schema_version = 1
+    name           = "kelvo"
+    services = {
+      node = {
+        image           = "ghcr.io/synehq/kelvo-go-node@sha256:<digest>"
+        node_profile    = "kelvo-node"   # approved by the administrator
+        node_name       = "hakopod-server"
+        replicas        = 1
+        update_strategy = "recreate"
+        sidecars = [{
+          name   = "tailscale"
+          image  = "ghcr.io/tailscale/tailscale@sha256:<digest>"
+          cpu    = "100m"
+          memory = "128Mi"
+          env = {
+            TS_USERSPACE  = "false"
+            TS_EXTRA_ARGS = "--exit-node=<exit-node> --exit-node-allow-lan-access"
+          }
+          secrets = { TS_AUTHKEY = { ref = "tailscale-auth" } }
+        }]
+      }
+    }
+  })
+}
+```
+
+Read the Hakopod guides on [node profiles](https://github.com/hakopod/hakopod/blob/main/docs/node-profiles.md) and [sidecars](https://github.com/hakopod/hakopod/blob/main/docs/sidecars.md) for the field rules and the administrator's file.
+
 ## Behaviour
 
 ### Plan
